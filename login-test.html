@@ -39,17 +39,24 @@
     padding: 24px 20px 28px; box-shadow: 0 20px 45px -20px rgba(0,0,0,0.18);
   }
   h1 { font-size: 19px; text-align: center; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
   .sub {
     font-size: 12.5px; color: var(--text-dim); text-align: center;
     padding-bottom: 15px; border-bottom: 1px solid var(--line-soft); margin-bottom: 16px;
   }
   label { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-dim); margin: 14px 0 6px; }
-  input[type="text"], input[type="password"] {
+  input[type="text"], input[type="password"], input[type="tel"], select, textarea {
     width: 100%; padding: 14px 15px; border: 1px solid var(--line); border-radius: 12px;
     font-size: 16px; font-family: inherit; background: var(--bg-2); color: var(--text);
   }
-  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  input:disabled, select:disabled { opacity: 0.65; background: var(--bg-1); }
   .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); margin-top: 12px; }
+  .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .checkbox-group .checkbox-item {
+    margin-top: 0; background: var(--bg-1); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 12px; font-size: 12.5px;
+  }
   .submit-btn {
     width: 100%; margin-top: 20px;
     background: linear-gradient(120deg, var(--accent) 0%, var(--accent-dark) 100%);
@@ -58,19 +65,36 @@
     box-shadow: 0 14px 30px -12px var(--accent-glow);
   }
   .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .home-btn {
+    width: 100%; padding: 17px; margin-top: 12px; border: 1px solid var(--line);
+    border-radius: 15px; font-size: 15px; font-weight: 700; cursor: pointer;
+    background: var(--bg-1); color: var(--text); font-family: inherit; text-align: right;
+  }
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--card-hi);
+    border: 1px solid var(--line); color: var(--accent); font-size: 13.5px; font-weight: 600;
+    font-family: inherit; cursor: pointer; padding: 10px 18px; border-radius: 12px; margin-bottom: 16px;
+  }
+  .geo-btn {
+    width: 100%; padding: 14px; margin-top: 8px; border: 1px dashed var(--accent);
+    border-radius: 12px; background: rgba(22,103,214,0.06); color: var(--accent);
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
   .msg {
     margin-top: 14px; padding: 11px 14px; border-radius: 10px; font-size: 13px;
     display: none; text-align: center;
   }
   .msg.error { background: rgba(214,61,51,0.1); color: var(--danger); border: 1px solid rgba(214,61,51,0.25); }
   .msg.success { background: rgba(31,157,84,0.1); color: var(--green); border: 1px solid rgba(31,157,84,0.25); }
-  .loading-note { text-align: center; font-size: 12px; color: var(--text-mute); margin-top: 10px; }
+  .geo-status { font-size: 12.5px; color: var(--text-dim); margin-top: 8px; text-align: center; }
 </style>
 </head>
 <body>
 
 <div class="wrap">
-  <div class="card">
+
+  <!-- شاشة تسجيل الدخول -->
+  <div class="card" id="loginView">
     <h1>نظام تسجيل الزيارات</h1>
     <p class="sub">إنجازات الفيحاء · تسجيل الدخول</p>
 
@@ -80,15 +104,70 @@
     <label for="loginPass">كلمة المرور</label>
     <input type="password" id="loginPass" autocomplete="off">
 
-    <label class="checkbox-item">
-      <input type="checkbox" id="loginRemember" checked> تذكرني على هذا الجهاز
-    </label>
-
     <button type="button" class="submit-btn" id="loginBtn" onclick="doLogin()">تسجيل الدخول</button>
     <div class="msg error" id="loginError"></div>
-    <div class="msg success" id="loginSuccess"></div>
   </div>
-  <p class="loading-note" id="debugNote"></p>
+
+  <!-- الصفحة الرئيسية -->
+  <div class="card" id="homeView" style="display:none;">
+    <h1 id="welcomeTitle">مرحبًا</h1>
+    <p class="sub" id="welcomeSub"></p>
+    <button type="button" class="home-btn" onclick="openNewPointForm()">➕ رفع نقطة بيع جديدة</button>
+    <button type="button" class="home-btn" onclick="doLogout()">🚪 تسجيل الخروج</button>
+  </div>
+
+  <!-- فورمة رفع نقطة جديدة -->
+  <div class="card" id="formView" style="display:none;">
+    <button type="button" class="back-btn" onclick="showHome()">‹ الرئيسية</button>
+    <h2>➕ رفع نقطة بيع جديدة</h2>
+    <p class="sub">عبّي البيانات وحدد الموقع قبل الإرسال</p>
+
+    <label for="fStore">اسم نقطة البيع</label>
+    <input type="text" id="fStore">
+
+    <label for="fPhone">رقم الهاتف</label>
+    <input type="tel" id="fPhone" maxlength="11" placeholder="07xxxxxxxxx">
+
+    <label for="fArea">المنطقة</label>
+    <input type="text" id="fArea">
+
+    <label for="fRep">المندوب</label>
+    <select id="fRep"></select>
+
+    <label for="fStatus">حالة الزبون</label>
+    <select id="fStatus" onchange="toggleReasonField()">
+      <option value="" disabled selected>اختر...</option>
+      <option value="تم البيع">تم البيع</option>
+      <option value="لديه مخزون">لديه مخزون</option>
+      <option value="لا يريد التعامل معنا">لا يريد التعامل معنا</option>
+      <option value="مسؤول المشتريات غير متواجد">مسؤول المشتريات غير متواجد</option>
+    </select>
+
+    <div id="reasonWrap" style="display:none;">
+      <label for="fReason">سبب الرفض</label>
+      <select id="fReason">
+        <option value="" disabled selected>اختر السبب...</option>
+        <option value="بسبب السعر">بسبب السعر</option>
+        <option value="منتج غير معروف">منتج غير معروف</option>
+        <option value="يتعامل فقط بالستندر">يتعامل فقط بالستندر</option>
+        <option value="يشتري من جملة">يشتري من جملة</option>
+      </select>
+    </div>
+
+    <label>الشركات المنافسة</label>
+    <div class="checkbox-group" id="competitorsBox"></div>
+
+    <label for="fNotes">ملاحظات</label>
+    <textarea id="fNotes" rows="3"></textarea>
+
+    <button type="button" class="geo-btn" onclick="getLocation()">📍 تحديد الموقع</button>
+    <div class="geo-status" id="geoStatus"></div>
+
+    <button type="button" class="submit-btn" id="submitBtn" disabled onclick="submitNewPoint()">إرسال البيانات</button>
+    <div class="msg error" id="formError"></div>
+    <div class="msg success" id="formSuccess"></div>
+  </div>
+
 </div>
 
 <script>
@@ -98,20 +177,36 @@
   const SUPABASE_URL = 'https://gitxwgrcvxjbkcmbbhei.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_rAcKcH5_QIuQpq4XB5Mwhg_EypFKFFw';
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  // اسم المستخدم يتحوّل تلقائيًا لإيميل داخلي (المستخدم ما يشوف هذا الجزء)
   const EMAIL_DOMAIN = '@ifco.local';
 
+  let currentUser = null;   // { id, role, full_name, company_id }
+  let currentLat = null;
+  let currentLng = null;
+
+  // ============================================
+  // شاشات التنقّل
+  // ============================================
+  function showView(id) {
+    ['loginView', 'homeView', 'formView'].forEach(function (v) {
+      document.getElementById(v).style.display = (v === id) ? 'block' : 'none';
+    });
+  }
+
+  function showHome() {
+    document.getElementById('welcomeTitle').textContent = 'مرحبًا ' + currentUser.full_name;
+    document.getElementById('welcomeSub').textContent = 'الصلاحية: ' + currentUser.role;
+    showView('homeView');
+  }
+
+  // ============================================
+  // تسجيل الدخول
+  // ============================================
   function doLogin() {
     const userInput = document.getElementById('loginUser').value.trim();
     const pass = document.getElementById('loginPass').value.trim();
-    const remember = document.getElementById('loginRemember').checked;
     const loginBtn = document.getElementById('loginBtn');
     const errorEl = document.getElementById('loginError');
-    const successEl = document.getElementById('loginSuccess');
-
     errorEl.style.display = 'none';
-    successEl.style.display = 'none';
 
     if (!userInput || !pass) {
       errorEl.textContent = 'الرجاء إدخال اسم المستخدم وكلمة المرور';
@@ -119,37 +214,22 @@
       return;
     }
 
-    // تحويل اسم المستخدم لإيميل داخلي (management -> management@ifco.local)
     const email = userInput.includes('@') ? userInput : userInput.toLowerCase() + EMAIL_DOMAIN;
-
     loginBtn.disabled = true;
     loginBtn.textContent = 'جارٍ التحقق...';
 
     supabaseClient.auth.signInWithPassword({ email: email, password: pass })
       .then(function (result) {
-        if (result.error) {
-          throw result.error;
-        }
-        // نجح تسجيل الدخول بـ Supabase — الحين نجيب الدور والاسم من جدول profiles
-        return supabaseClient
-          .from('profiles')
-          .select('role, full_name, company_id')
-          .eq('id', result.data.user.id)
-          .single();
+        if (result.error) throw result.error;
+        return supabaseClient.from('profiles').select('id, role, full_name, company_id')
+          .eq('id', result.data.user.id).single();
       })
       .then(function (profileResult) {
-        if (profileResult.error) {
-          throw profileResult.error;
-        }
-        const profile = profileResult.data;
-        successEl.textContent = 'تم الدخول بنجاح ✅ — مرحبًا ' + profile.full_name + ' (' + profile.role + ')';
-        successEl.style.display = 'block';
-        loginBtn.textContent = 'تسجيل الدخول';
+        if (profileResult.error) throw profileResult.error;
+        currentUser = profileResult.data;
         loginBtn.disabled = false;
-
-        // هذا مؤقت بس للتجربة — لاحقًا رح نحوّله لصفحة النظام الفعلية
-        document.getElementById('debugNote').textContent =
-          'بيانات الحساب: ' + JSON.stringify(profile);
+        loginBtn.textContent = 'تسجيل الدخول';
+        showHome();
       })
       .catch(function (err) {
         loginBtn.disabled = false;
@@ -159,10 +239,227 @@
       });
   }
 
-  // السماح بالضغط على Enter لتسجيل الدخول
+  function doLogout() {
+    supabaseClient.auth.signOut().then(function () {
+      currentUser = null;
+      document.getElementById('loginUser').value = '';
+      document.getElementById('loginPass').value = '';
+      showView('loginView');
+    });
+  }
+
   document.getElementById('loginPass').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') doLogin();
   });
+
+  // ============================================
+  // فورمة رفع نقطة جديدة
+  // ============================================
+  function openNewPointForm() {
+    document.getElementById('fStore').value = '';
+    document.getElementById('fPhone').value = '';
+    document.getElementById('fArea').value = '';
+    document.getElementById('fStatus').selectedIndex = 0;
+    document.getElementById('fNotes').value = '';
+    document.getElementById('reasonWrap').style.display = 'none';
+    document.getElementById('geoStatus').textContent = '';
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('formError').style.display = 'none';
+    document.getElementById('formSuccess').style.display = 'none';
+    currentLat = null;
+    currentLng = null;
+
+    loadRepOptions();
+    loadCompetitors();
+    showView('formView');
+  }
+
+  function toggleReasonField() {
+    const status = document.getElementById('fStatus').value;
+    document.getElementById('reasonWrap').style.display =
+      (status === 'لا يريد التعامل معنا') ? 'block' : 'none';
+  }
+
+  // تعبئة خانة المندوب: مقفولة لو الحساب "مندوب"، وإلا قائمة بكل المندوبين
+  function loadRepOptions() {
+    const sel = document.getElementById('fRep');
+    sel.innerHTML = '';
+
+    if (currentUser.role === 'مندوب') {
+      const opt = document.createElement('option');
+      opt.value = currentUser.id;
+      opt.textContent = currentUser.full_name;
+      sel.appendChild(opt);
+      sel.value = currentUser.id;
+      sel.disabled = true;
+      return;
+    }
+
+    sel.disabled = false;
+    sel.innerHTML = '<option value="" disabled selected>اختر المندوب...</option>';
+    supabaseClient.from('profiles').select('id, full_name')
+      .eq('company_id', currentUser.company_id).eq('role', 'مندوب').order('full_name')
+      .then(function (result) {
+        if (result.error) return;
+        result.data.forEach(function (rep) {
+          const opt = document.createElement('option');
+          opt.value = rep.id;
+          opt.textContent = rep.full_name;
+          sel.appendChild(opt);
+        });
+      });
+  }
+
+  function loadCompetitors() {
+    const box = document.getElementById('competitorsBox');
+    box.innerHTML = '<span style="font-size:12px;color:var(--text-mute);">جارٍ التحميل...</span>';
+    supabaseClient.from('competitors').select('id, name')
+      .eq('company_id', currentUser.company_id).eq('is_active', true).order('name')
+      .then(function (result) {
+        box.innerHTML = '';
+        if (result.error || !result.data.length) {
+          box.innerHTML = '<span style="font-size:12px;color:var(--text-mute);">لا توجد شركات مسجّلة</span>';
+          return;
+        }
+        result.data.forEach(function (c) {
+          const label = document.createElement('label');
+          label.className = 'checkbox-item';
+          label.innerHTML = '<input type="checkbox" class="competitor-cb" value="' + c.id + '"> ' + c.name;
+          box.appendChild(label);
+        });
+      });
+  }
+
+  function getLocation() {
+    const status = document.getElementById('geoStatus');
+    if (!navigator.geolocation) {
+      status.textContent = 'المتصفح لا يدعم تحديد الموقع';
+      return;
+    }
+    status.textContent = 'جارٍ تحديد الموقع...';
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      currentLat = pos.coords.latitude;
+      currentLng = pos.coords.longitude;
+      status.textContent = 'تم تحديد الموقع ✅ (' + currentLat.toFixed(5) + ', ' + currentLng.toFixed(5) + ')';
+      document.getElementById('submitBtn').disabled = false;
+    }, function () {
+      status.textContent = 'تعذر تحديد الموقع، تأكد من تفعيل الصلاحية';
+    }, { enableHighAccuracy: true, timeout: 15000 });
+  }
+
+  // ============================================
+  // إرسال البيانات (المنطق الأساسي: إيجاد/إنشاء زبون + تسجيل زيارة)
+  // ============================================
+  function submitNewPoint() {
+    const store = document.getElementById('fStore').value.trim();
+    const phone = document.getElementById('fPhone').value.trim();
+    const area = document.getElementById('fArea').value.trim();
+    const repId = document.getElementById('fRep').value;
+    const status = document.getElementById('fStatus').value;
+    const reason = document.getElementById('fReason') ? document.getElementById('fReason').value : '';
+    const notes = document.getElementById('fNotes').value.trim();
+    const errorEl = document.getElementById('formError');
+    const successEl = document.getElementById('formSuccess');
+    const submitBtn = document.getElementById('submitBtn');
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+
+    if (!store || !area || !repId || !status || !currentLat) {
+      errorEl.textContent = 'الرجاء تعبئة كل الحقول الأساسية وتحديد الموقع';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (status === 'لا يريد التعامل معنا' && !reason) {
+      errorEl.textContent = 'الرجاء اختيار سبب الرفض';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'جارٍ الإرسال...';
+
+    // ملاحظة: هذا نسخة مبسّطة للنواة الأساسية — تبحث بالهاتف بس.
+    // مطابقة الاسم+الموقع (زي النظام القديم) نضيفها لاحقًا كتحسين.
+    findOrCreateCustomer(store, phone, area)
+      .then(function (customerId) {
+        return insertVisit(customerId, repId, status, reason, notes);
+      })
+      .then(function (visitId) {
+        return linkCompetitors(visitId);
+      })
+      .then(function () {
+        successEl.textContent = 'تم إرسال البيانات بنجاح ✅';
+        successEl.style.display = 'block';
+        submitBtn.textContent = 'إرسال البيانات';
+        submitBtn.disabled = true;
+        setTimeout(function () { showHome(); }, 1500);
+      })
+      .catch(function (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'إرسال البيانات';
+        errorEl.textContent = 'خطأ: ' + (err.message || String(err));
+        errorEl.style.display = 'block';
+      });
+  }
+
+  function findOrCreateCustomer(name, phone, area) {
+    const companyId = currentUser.company_id;
+
+    const searchPromise = phone
+      ? supabaseClient.from('customers').select('id').eq('company_id', companyId).eq('phone', phone).limit(1)
+      : Promise.resolve({ data: [] });
+
+    return searchPromise.then(function (result) {
+      if (result.data && result.data.length > 0) {
+        return result.data[0].id;
+      }
+      return supabaseClient.from('customers').select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .then(function (countResult) {
+          const nextNum = (countResult.count || 0) + 1;
+          const code = 'C-' + String(nextNum).padStart(4, '0');
+          return supabaseClient.from('customers').insert({
+            company_id: companyId,
+            customer_code: code,
+            name: name,
+            phone: phone || null,
+            area: area,
+            latitude: currentLat,
+            longitude: currentLng
+          }).select('id').single();
+        })
+        .then(function (insertResult) {
+          if (insertResult.error) throw insertResult.error;
+          return insertResult.data.id;
+        });
+    });
+  }
+
+  function insertVisit(customerId, repId, status, reason, notes) {
+    return supabaseClient.from('visits').insert({
+      company_id: currentUser.company_id,
+      customer_id: customerId,
+      rep_id: repId,
+      visit_type: 'new_point',
+      customer_status: status,
+      rejection_reason: reason || null,
+      notes: notes || null,
+      latitude: currentLat,
+      longitude: currentLng
+    }).select('id').single().then(function (result) {
+      if (result.error) throw result.error;
+      return result.data.id;
+    });
+  }
+
+  function linkCompetitors(visitId) {
+    const checked = Array.prototype.slice.call(document.querySelectorAll('.competitor-cb:checked'));
+    if (checked.length === 0) return Promise.resolve();
+    const rows = checked.map(function (cb) {
+      return { visit_id: visitId, competitor_id: cb.value };
+    });
+    return supabaseClient.from('visit_competitors').insert(rows);
+  }
 </script>
 
 </body>
