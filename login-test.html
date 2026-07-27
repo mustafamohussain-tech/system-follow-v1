@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام تسجيل الزيارات - ifco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-0: #eef2f7; --bg-1: #f4f7fb; --bg-2: #ffffff;
+    --card: #ffffff; --card-hi: #f0f4fa;
+    --line: #d3dce8; --line-soft: #e4eaf2;
+    --accent: #1667d6; --accent-2: #1257bd; --accent-dark: #0d4699;
+    --accent-glow: rgba(22,103,214,0.22);
+    --teal: #0f9e91; --amber: #c8791b; --danger: #d63d33; --green: #1f9d54;
+    --text: #16233a; --text-dim: #566581; --text-mute: #8494ac;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Cairo', 'Tahoma', 'Segoe UI', sans-serif;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, #dbe7f7 0%, transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, #e3ecf8 0%, transparent 55%),
+      linear-gradient(160deg, #eef2f7 0%, #e6edf5 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 14px 40px;
+  }
+  .wrap { width: 100%; max-width: 420px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+    padding: 24px 20px 28px; box-shadow: 0 20px 45px -20px rgba(0,0,0,0.18);
+  }
+  h1 { font-size: 19px; text-align: center; margin: 0 0 4px; }
+  .sub {
+    font-size: 12.5px; color: var(--text-dim); text-align: center;
+    padding-bottom: 15px; border-bottom: 1px solid var(--line-soft); margin-bottom: 16px;
+  }
+  label { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-dim); margin: 14px 0 6px; }
+  input[type="text"], input[type="password"] {
+    width: 100%; padding: 14px 15px; border: 1px solid var(--line); border-radius: 12px;
+    font-size: 16px; font-family: inherit; background: var(--bg-2); color: var(--text);
+  }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); margin-top: 12px; }
+  .submit-btn {
+    width: 100%; margin-top: 20px;
+    background: linear-gradient(120deg, var(--accent) 0%, var(--accent-dark) 100%);
+    color: #fff; border: none; padding: 16px; border-radius: 14px;
+    font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+    box-shadow: 0 14px 30px -12px var(--accent-glow);
+  }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .msg {
+    margin-top: 14px; padding: 11px 14px; border-radius: 10px; font-size: 13px;
+    display: none; text-align: center;
+  }
+  .msg.error { background: rgba(214,61,51,0.1); color: var(--danger); border: 1px solid rgba(214,61,51,0.25); }
+  .msg.success { background: rgba(31,157,84,0.1); color: var(--green); border: 1px solid rgba(31,157,84,0.25); }
+  .loading-note { text-align: center; font-size: 12px; color: var(--text-mute); margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="card">
+    <h1>نظام تسجيل الزيارات</h1>
+    <p class="sub">إنجازات الفيحاء · تسجيل الدخول</p>
+
+    <label for="loginUser">اسم المستخدم</label>
+    <input type="text" id="loginUser" autocomplete="off">
+
+    <label for="loginPass">كلمة المرور</label>
+    <input type="password" id="loginPass" autocomplete="off">
+
+    <label class="checkbox-item">
+      <input type="checkbox" id="loginRemember" checked> تذكرني على هذا الجهاز
+    </label>
+
+    <button type="button" class="submit-btn" id="loginBtn" onclick="doLogin()">تسجيل الدخول</button>
+    <div class="msg error" id="loginError"></div>
+    <div class="msg success" id="loginSuccess"></div>
+  </div>
+  <p class="loading-note" id="debugNote"></p>
+</div>
+
+<script>
+  // ============================================
+  // إعداد الاتصال بـ Supabase
+  // ============================================
+  const SUPABASE_URL = 'https://gitxwgrcvxjbkcmbbhei.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_rAcKcH5_QIuQpq4XB5Mwhg_EypFKFFw';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // اسم المستخدم يتحوّل تلقائيًا لإيميل داخلي (المستخدم ما يشوف هذا الجزء)
+  const EMAIL_DOMAIN = '@ifco.local';
+
+  function doLogin() {
+    const userInput = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value.trim();
+    const remember = document.getElementById('loginRemember').checked;
+    const loginBtn = document.getElementById('loginBtn');
+    const errorEl = document.getElementById('loginError');
+    const successEl = document.getElementById('loginSuccess');
+
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+
+    if (!userInput || !pass) {
+      errorEl.textContent = 'الرجاء إدخال اسم المستخدم وكلمة المرور';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    // تحويل اسم المستخدم لإيميل داخلي (management -> management@ifco.local)
+    const email = userInput.includes('@') ? userInput : userInput.toLowerCase() + EMAIL_DOMAIN;
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'جارٍ التحقق...';
+
+    supabaseClient.auth.signInWithPassword({ email: email, password: pass })
+      .then(function (result) {
+        if (result.error) {
+          throw result.error;
+        }
+        // نجح تسجيل الدخول بـ Supabase — الحين نجيب الدور والاسم من جدول profiles
+        return supabaseClient
+          .from('profiles')
+          .select('role, full_name, company_id')
+          .eq('id', result.data.user.id)
+          .single();
+      })
+      .then(function (profileResult) {
+        if (profileResult.error) {
+          throw profileResult.error;
+        }
+        const profile = profileResult.data;
+        successEl.textContent = 'تم الدخول بنجاح ✅ — مرحبًا ' + profile.full_name + ' (' + profile.role + ')';
+        successEl.style.display = 'block';
+        loginBtn.textContent = 'تسجيل الدخول';
+        loginBtn.disabled = false;
+
+        // هذا مؤقت بس للتجربة — لاحقًا رح نحوّله لصفحة النظام الفعلية
+        document.getElementById('debugNote').textContent =
+          'بيانات الحساب: ' + JSON.stringify(profile);
+      })
+      .catch(function (err) {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'تسجيل الدخول';
+        errorEl.textContent = 'خطأ: ' + (err.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+        errorEl.style.display = 'block';
+      });
+  }
+
+  // السماح بالضغط على Enter لتسجيل الدخول
+  document.getElementById('loginPass').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') doLogin();
+  });
+</script>
+
+</body>
+</html>
